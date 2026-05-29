@@ -82,7 +82,7 @@ if use_env.lower() not in ["s", "n"]:
 if use_env.lower() == "s":
     # Exemplo de uso
     server_ip = os.getenv('SERVER_IP')  # IP do servidor remoto
-    username = os.getenv("USER")        # Nome de usuário no servidor remoto
+    username = os.getenv("USERNAME")        # Nome de usuário no servidor remoto
     password = os.getenv("PASSWORD")    # Senha do usuário no servidor remoto
     port = os.getenv("PORT")              # Porta SSH do servidor remoto
     
