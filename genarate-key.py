@@ -14,7 +14,21 @@ def create_ssh_key(key_name="id_rsa", key_path=None, passphrase=""):
         os.makedirs(key_path)
 
     private_key = os.path.join(key_path, key_name)
-    
+    public_key = f"{private_key}.pub"
+
+    # Se a chave já existe, perguntar se deve sobrescrever; senão, reutilizar
+    if os.path.exists(private_key):
+        overwrite = input(f"{private_key} já existe. Sobrescrever? (s/n): ").strip().lower()
+        if overwrite != "s":
+            if not os.path.exists(public_key):
+                print(f"Chave pública {public_key} não encontrada, não é possível reutilizar.")
+                return None
+            print(f"Reutilizando a chave existente em {private_key}")
+            return private_key, public_key
+        os.remove(private_key)
+        if os.path.exists(public_key):
+            os.remove(public_key)
+
     # Gerar a chave SSH
     command = [
         "ssh-keygen",
@@ -31,7 +45,7 @@ def create_ssh_key(key_name="id_rsa", key_path=None, passphrase=""):
         print(f"Erro ao criar chave SSH: {e}")
         return None
 
-    return private_key, f"{private_key}.pub"
+    return private_key, public_key
 
 def send_public_key_to_server(server_ip, port, username, password, public_key_path):
     ssh = paramiko.SSHClient()
@@ -64,13 +78,14 @@ def configure_ssh_access(server_ip, port, username, password, key_name=None, pas
         passphrase = ""
     if key_name is None:
         key_name = input("Informe o nome da chave SSH: ")
-    key_path, pub_key_path = create_ssh_key(key_name=key_name, passphrase=passphrase)
-    
-    if pub_key_path:
+    result = create_ssh_key(key_name=key_name, passphrase=passphrase)
+
+    if result:
+        _, pub_key_path = result
         # Passo 2: Enviar a chave pública para o servidor
         send_public_key_to_server(server_ip, port, username, password, pub_key_path)
     else:
-        print("Falha na criação da chave, não foi possível prosseguir.")
+        print("Falha na criação da chave (ou sobrescrita recusada), não foi possível prosseguir.")
 
 
 use_env = input("Deseja usar o arquivo .env para configurar o acesso SSH? (s/n): ")
@@ -85,7 +100,7 @@ if use_env.lower() == "s":
     username = os.getenv("USERNAME")        # Nome de usuário no servidor remoto
     password = os.getenv("PASSWORD")    # Senha do usuário no servidor remoto
     port = os.getenv("PORT")              # Porta SSH do servidor remoto
-    
+    print(f"Usando as configurações do arquivo .env: SERVER_IP={server_ip}, USERNAME={username}, PORT={port}, PASSWORD={password}")
 else:
     server_ip = input("Informe o IP do servidor remoto: ")
     username = input("Informe o nome de usuário no servidor remoto: ")
